@@ -7,7 +7,7 @@ inventory = [
     {"id": 1, "name": "Resistor", "quantity": 1200, "location": "A1"},
     {"id": 2, "name": "Capacitor", "quantity": 800, "location": "B3"},
     {"id": 3, "name": "IC Chip", "quantity": 500, "location": "C2"},
-    {"id": 4, "name": "LED", "quantity": 1000, "location": "A2"},
+    {"id": 4, "name": "LED", "quantity": 10000, "location": "A2"},
 ]
 
 @app.route('/')
