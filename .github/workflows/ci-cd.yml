@@ -35,15 +35,19 @@ jobs:
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
 
-      - name: Convert owner and repo name to lowercase
-        id: vars
+      # ✅ Force owner and repo names to lowercase
+      - name: Convert to lowercase
+        id: lc
         run: |
-          echo "lc_owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-          echo "lc_repo=$(basename '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO=$(basename "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "owner=$OWNER" >> $GITHUB_OUTPUT
+          echo "repo=$REPO" >> $GITHUB_OUTPUT
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -58,118 +62,77 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ steps.vars.outputs.lc_owner }}/${{ steps.vars.outputs.lc_repo }}/inventory-app:${{ github.sha }}
-            ghcr.io/${{ steps.vars.outputs.lc_owner }}/${{ steps.vars.outputs.lc_repo }}/inventory-app:latest
+            ghcr.io/${{ steps.lc.outputs.owner }}/${{ steps.lc.outputs.repo }}/inventory-app:${{ github.sha }}
+            ghcr.io/${{ steps.lc.outputs.owner }}/${{ steps.lc.outputs.repo }}/inventory-app:latest
 
   deploy-to-ec2:
     name: Deploy to AWS EC2 (with built-in rollback)
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
+    if: ${{ github.ref == 'refs/heads/main' }}
     steps:
-      - name: Guard secrets
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USERNAME }}
-          EC2_KEY:  ${{ secrets.EC2_SSH_KEY }}
-        run: |
-          missing=0
-          [ -z "${EC2_HOST}" ] && echo "::error::Missing secret EC2_HOST" && missing=1
-          [ -z "${EC2_USER}" ] && echo "::error::Missing secret EC2_USERNAME" && missing=1
-          [ -z "${EC2_KEY}"  ] && echo "::error::Missing secret EC2_SSH_KEY" && missing=1
-          if [ "$missing" -eq 1 ]; then
-            echo "SKIP_DEPLOY=true" >> $GITHUB_ENV
-          fi
-
-      - name: Abort (missing secrets)
-        if: env.SKIP_DEPLOY == 'true'
-        run: echo "Skipping deploy because required EC2 secrets are not set."
-
       - name: SSH agent
-        if: env.SKIP_DEPLOY != 'true'
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
       - name: Add EC2 host to known_hosts
-        if: env.SKIP_DEPLOY != 'true'
         run: ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Owner and repo lowercase (for GHCR path)
-        if: env.SKIP_DEPLOY != 'true'
-        id: owner_repo
+      # ✅ Convert to lowercase again for EC2 deploy path
+      - name: Lowercase repo/owner for GHCR path
+        id: repo_vars
         run: |
-          echo "lc_owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-          echo "lc_repo=$(basename '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO=$(basename "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "owner=$OWNER" >> $GITHUB_OUTPUT
+          echo "repo=$REPO" >> $GITHUB_OUTPUT
 
-      - name: Connect and Deploy to EC2 (with rollback)
-        if: env.SKIP_DEPLOY != 'true'
+      - name: Connect and Deploy to EC2
         env:
-          IMAGE_SHA: ghcr.io/${{ steps.owner_repo.outputs.lc_owner }}/${{ steps.owner_repo.outputs.lc_repo }}/inventory-app:${{ github.sha }}
+          IMAGE_SHA: ghcr.io/${{ steps.repo_vars.outputs.owner }}/${{ steps.repo_vars.outputs.repo }}/inventory-app:${{ github.sha }}
           GHCR_USER: ${{ github.actor }}
           GHCR_PAT: ${{ secrets.GITHUB_TOKEN }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USERNAME }}
         run: |
-          ssh "$EC2_USER@$EC2_HOST" APP_DIR="\$HOME/.inventory_state" IMAGE_SHA="$IMAGE_SHA" GHCR_USER="$GHCR_USER" GHCR_PAT="${GHCR_PAT:-}" 'bash -seu' << 'EOF'
+          ssh "$EC2_USER@$EC2_HOST" IMAGE_SHA="$IMAGE_SHA" GHCR_USER="$GHCR_USER" GHCR_PAT="$GHCR_PAT" 'bash -seu' << 'EOF'
             set -euo pipefail
 
-            APP_DIR="${APP_DIR:-$HOME/.inventory_state}"
-            CONTAINER=inventory-app-container
+            CONTAINER=inventory-app
             HEALTH_URL=http://localhost:5000/
-            LAST="$APP_DIR/.last_good_tag"
-            PREV="$APP_DIR/.prev_good_tag"
-            HIST="$APP_DIR/.deploy_history"
-            mkdir -p "$APP_DIR"
+            LAST=.last_good
+            PREV=.prev_good
 
-            echo "Pulling $IMAGE_SHA ..."
+            echo "Pulling image: $IMAGE_SHA ..."
             echo "$GHCR_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             docker pull "$IMAGE_SHA"
 
-            PREV_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$CONTAINER" 2>/dev/null || true)"
+            echo "Stopping existing container..."
             docker rm -f "$CONTAINER" 2>/dev/null || true
-            docker run -d --name "$CONTAINER" --restart unless-stopped -p 5000:5000 "$IMAGE_SHA"
 
-            echo "Health check at $HEALTH_URL ..."
-            ok=0
-            for i in $(seq 1 30); do
-              code="$(curl -s -o /dev/null -w '%{http_code}' "$HEALTH_URL" || echo 000)"
-              [ "$code" = "200" ] && ok=1 && break || ok=0
-              sleep 2
+            echo "Starting new container..."
+            docker run -d --name "$CONTAINER" -p 5000:5000 "$IMAGE_SHA"
+
+            echo "Running health check..."
+            for i in {1..10}; do
+              if curl -fs http://localhost:5000/ >/dev/null; then
+                echo "✅ New version healthy!"
+                mv "$LAST" "$PREV" 2>/dev/null || true
+                echo "$IMAGE_SHA" > "$LAST"
+                exit 0
+              fi
+              sleep 3
             done
 
-            if [ "$ok" = 1 ]; then
-              echo "✅ Healthy — recording state"
-              [ -f "$LAST" ] && cp "$LAST" "$PREV"
-              echo "$IMAGE_SHA" > "$LAST"
-              echo "$(date -Iseconds) $IMAGE_SHA (deploy ok)" >> "$HIST"
-              exit 0
-            fi
-
-            echo "❌ Unhealthy — attempting rollback ..."
-            TARGET="$( [ -f "$PREV" ] && cat "$PREV" || echo "$PREV_IMAGE" )"
-            [ -z "$TARGET" ] && { echo "No rollback target found."; exit 1; }
-
-            docker pull "$TARGET" || true
-            docker rm -f "$CONTAINER" 2>/dev/null || true
-            docker run -d --name "$CONTAINER" --restart unless-stopped -p 5000:5000 "$TARGET"
-
-            rok=0
-            for i in $(seq 1 30); do
-              code="$(curl -s -o /dev/null -w '%{http_code}' "$HEALTH_URL" || echo 000)"
-              [ "$code" = "200" ] && rok=1 && break || rok=0
-              sleep 2
-            done
-
-            if [ "$rok" = 1 ]; then
-              echo "✅ Rollback healthy"
-              [ -f "$LAST" ] && cp "$LAST" "$PREV"
-              echo "$TARGET" > "$LAST"
-              echo "$(date -Iseconds) $TARGET (rollback ok)" >> "$HIST"
-              exit 0
+            echo "❌ New version unhealthy. Rolling back..."
+            if [ -f "$PREV" ]; then
+              PREV_IMG=$(cat "$PREV")
+              docker rm -f "$CONTAINER" 2>/dev/null || true
+              docker run -d --name "$CONTAINER" -p 5000:5000 "$PREV_IMG"
+              echo "✅ Rolled back to $PREV_IMG"
             else
-              echo "❌ Rollback failed."
-              echo "$(date -Iseconds) $IMAGE_SHA (deploy failed, rollback failed)" >> "$HIST"
+              echo "⚠️ No previous image found to rollback."
               exit 1
             fi
           EOF
