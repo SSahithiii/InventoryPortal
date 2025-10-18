@@ -9,12 +9,12 @@ This project implements a **reliable CI/CD pipeline** for the Inventory Manageme
 - Provides **manual and automatic rollback**  
 
 ---
-## Points to note while running and testing locally
+## Steps to implement while running and testing locally
 
 - Fork this repository 
-- While running on remote machine pass values to secrets
+- While running on remote machine pass the below values to secrets
 - ## 🔐 GitHub Secrets Required
-  # (Under repo settings --> Secrets and Variables --> Variables --> Actions --> New Repo Secret --> Give Name of the secret and the  value)
+  #### (Under repo settings --> Secrets and Variables --> Actions --> New Repo Secret --> Give Name of the secret and the value)
 
 - **EC2_HOST** — IP or DNS of EC2 server  
 - **EC2_USERNAME** — SSH user for EC2 (e.g., `ubuntu`)  
@@ -111,6 +111,33 @@ By default, you need sudo to run Docker commands. To allow your user to run Dock
 sudo usermod -aG docker $USER
 ```
 
+### 🧩 Step 7: Clone the repo
+```bash
+git clone <repo-url> --> For getting the rollback.sh file (For manual rollback)
+```
+
+## 📂 **Trigger Deployment Pipeline**
+
+ 1. **Clone Repository to Local Machine:**
+   - Pull the latest code from the remote repository to your local environment.
+   
+ 2. **Modify Files:**
+   - **main.py:** Make necessary changes or updates to the `main.py` file.
+   - **test_app.py:** If there are any updates to `main.py`, ensure the corresponding tests in `test_app.py` are modified to reflect the changes.
+   - **requirements.txt:** If there are any new dependencies added or removed, update the `requirements.txt` file accordingly.
+
+   **Important Note:**
+   - If any modifications are made to `main.py`, validate that corresponding changes are made in `test_app.py` as well. 
+   - If any test case fails after changes, the deployment process will be aborted.
+
+ 3. **Commit and Push Changes:**
+   - After making the necessary changes, commit and push the modifications to the remote repository.
+
+ 4. **Pipeline Trigger:**
+   - Once the changes are pushed, the deployment pipeline will automatically trigger if configured properly.
+
+ 5. **Deployment to Remote Server:**
+   - The pipeline will deploy the code to the remote server, provided all tests pass successfully.
 
 ## ⚡ GitHub Actions Pipeline Steps
 
@@ -129,7 +156,7 @@ sudo usermod -aG docker $USER
   - **Updates `.last_good_tag` and `.prev_good_tag`**  
   - **Auto rollback if deployment fails**  
 
-## 🔁 Manual Rollback
+## 🔁 Manual Rollback 
 
 To rollback to last stable deployment:
 ```bash
