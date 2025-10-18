@@ -12,7 +12,7 @@ inventory = [
 
 @app.route('/')
 def home():
-    return jsonify({"message": "Welcome to Inventory Tracker API!!GoodMorning This is for testing purpose."})
+    return jsonify({"message": "Welcome to Inventory Tracker API!!"})
 
 @app.route('/inventory', methods=['GET'])
 def get_inventory():
