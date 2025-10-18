@@ -22,7 +22,7 @@ This project implements a **reliable CI/CD pipeline** for the Inventory Manageme
 │ └── rollback.sh # Manual rollback mechanism
 └── README.md
 
-## 📂 Local Testing :
+## 📂 Local Testing 
 Using the dockerFile run the container in the local machine.
 git clone <repo-url>
 cd inventory-app
@@ -31,7 +31,7 @@ docker run -d -p 5000:5000 --name inventory-app-container inventory-app:latest
 
 Access: http://localhost:5000
 
-🖥️ Remote EC2 Setup
+## 🖥️ Remote EC2 Setup
 🧩 Step 1: Connect to EC2
 ssh ubuntu@<EC2_HOST>
 Always start by updating the package list and installing prerequisites:
@@ -70,7 +70,7 @@ By default, you need sudo to run Docker commands.
 To allow your user to run Docker directly:
 sudo usermod -aG docker $USER
 
-🔐 GitHub Secrets Required
+ ## 🔐 GitHub Secrets Required
 
 The pipeline requires these GitHub repository secrets:
 EC2_HOST	IP or DNS of EC2 server
@@ -83,7 +83,7 @@ SSH into EC2
 Pull Docker image from GHCR
 Run the container securely**
 
-⚡ GitHub Actions Pipeline Steps :
+ ## ⚡ GitHub Actions Pipeline Steps :
 ci-cd.yml workflow:
  Checkout repository
  Setup Python 3.11
@@ -99,7 +99,7 @@ ci-cd.yml workflow:
  Updates .last_good_tag and .prev_good_tag**
  Auto rollback if deployment fails
  
-🔁 Manual Rollback
+ ## 🔁 Manual Rollback
 To rollback to last good deployment:
 bash rollback.sh
 
