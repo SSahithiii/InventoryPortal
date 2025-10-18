@@ -33,17 +33,15 @@ Access: http://localhost:5000
 🔐 GitHub Secrets Required
 
 The pipeline requires these GitHub repository secrets:
-
-Secret Name	Description
 EC2_HOST	IP or DNS of EC2 server
 EC2_USERNAME	SSH user for EC2 (e.g., ubuntu)
 EC2_SSH_KEY	Private key for SSH access
 GHCR_PAT	GitHub Personal Access Token for Container Registry
 
-These secrets are used in the deployment step to:
+**These secrets are used in the deployment step to:
 SSH into EC2
 Pull Docker image from GHCR
-Run the container securely
+Run the container securely**
 
 ⚡ GitHub Actions Pipeline Steps :
 ci-cd.yml workflow:
@@ -64,26 +62,47 @@ ci-cd.yml workflow:
  🖥️ Remote EC2 Setup
 1️⃣ Connect to EC2
 ssh ubuntu@<EC2_HOST>
+Always start by updating the package list and installing prerequisites:
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg lsb-release
 
-2️⃣ Install Docker
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y ca-certificates curl gnupg lsb-release
-
+🧩 Step 3: Add Docker’s official GPG key
 sudo mkdir -p /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | \
-sudo tee /etc/apt/sources.list.d/docker.list
+🧩 Step 4: Set up the Docker repository
+Now add the Docker repository to your sources list:
 
-sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-sudo systemctl enable docker
-sudo systemctl start docker
+🧩 Step 5: Install Docker Engine
+Update the package index again and install Docker:
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+🧩 Step 6: Verify Docker installation
+Check if Docker service is active:
+sudo systemctl status docker
+
+You should see something like active (running) ✅
+To exit the status view, press q.
+
+Then check the Docker version:
+docker --version
+
+And run a test container:
+sudo docker run hello-world
+
+If you see a “Hello from Docker!” message — everything works perfectly 🎉
+🧩 Step 7: (Optional) Run Docker without sudo
+By default, you need sudo to run Docker commands.
+To allow your user to run Docker directly:
+
 sudo usermod -aG docker $USER
-newgrp docker
-
 3️⃣ Create Rollback State Directory
 mkdir -p ~/.inventory_state
 
@@ -101,9 +120,9 @@ To rollback to previous deployment:
 ROLLBACK_PREV=1 bash scripts/rollback.sh
 
 
-The script:
+**The script:
 Stops the current container
 Pulls the rollback image
 Starts container
 Runs health check
-Updates .last_good_tag and .prev_good_tag
+Updates .last_good_tag and .prev_good_tag**
