@@ -41,11 +41,8 @@ EC2_SSH_KEY	Private key for SSH access
 GHCR_PAT	GitHub Personal Access Token for Container Registry
 
 These secrets are used in the deployment step to:
-
 SSH into EC2
-
 Pull Docker image from GHCR
-
 Run the container securely
 
 ⚡ GitHub Actions Pipeline Steps :
