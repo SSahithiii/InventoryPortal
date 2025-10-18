@@ -127,7 +127,7 @@ The pipeline requires these GitHub repository secrets:
 
 ## 🔁 Manual Rollback
 
-To rollback to last good deployment:
+To rollback to last stable deployment:
 ```bash
 bash rollback.sh
 ```
