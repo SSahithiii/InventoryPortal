@@ -56,8 +56,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ steps.owner.outputs.lc }}/inventory-app:${{ github.sha }}
-            ghcr.io/${{ steps.owner.outputs.lc }}/inventory-app:latest
+            ghcr.io/${{ steps.owner.outputs.lc }}/inventoryportal/inventory-app:${{ github.sha }}
+            ghcr.io/${{ steps.owner.outputs.lc }}/inventoryportal/inventory-app:latest
 
   deploy-to-ec2:
     name: Deploy to AWS EC2 (with built-in rollback)
@@ -101,7 +101,7 @@ jobs:
       - name: Connect and Deploy to EC2 (SHA deploy + auto rollback + state files + DEBUG)
         if: env.SKIP_DEPLOY != 'true'
         env:
-          IMAGE_SHA: ghcr.io/${{ steps.owner2.outputs.lc }}/inventory-app:${{ github.sha }}
+          IMAGE_SHA: ghcr.io/${{ steps.owner2.outputs.lc }}/inventoryportal/inventory-app:${{ github.sha }}
           GHCR_USER: ${{ github.actor }}
           GHCR_PAT: ${{ secrets.GHCR_PAT }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
