@@ -9,6 +9,21 @@ This project implements a **reliable CI/CD pipeline** for the Inventory Manageme
 - Provides **manual and automatic rollback**  
 
 ---
+##Points to note while running and testing locally
+
+- While running on remote machine pass values to secrets
+- ## 🔐 GitHub Secrets Required
+
+- **EC2_HOST** — IP or DNS of EC2 server  
+- **EC2_USERNAME** — SSH user for EC2 (e.g., `ubuntu`)  
+- **EC2_SSH_KEY** — Private key for SSH access  
+- **GHCR_PAT** — GitHub Personal Access Token for Container Registry  (Pass this value if you're trying to pull the image from a private repository) The pipeline will fetch the secret value from this.
+
+**These secrets are used in the deployment step to:**
+- SSH into EC2  
+- Pull Docker image from GHCR  
+- Run the container securely  
+
 
 ## 📂 Repository Structure
 
@@ -94,19 +109,6 @@ By default, you need sudo to run Docker commands. To allow your user to run Dock
 sudo usermod -aG docker $USER
 ```
 
-## 🔐 GitHub Secrets Required
-
-The pipeline requires these GitHub repository secrets:
-
-- **EC2_HOST** — IP or DNS of EC2 server  
-- **EC2_USERNAME** — SSH user for EC2 (e.g., `ubuntu`)  
-- **EC2_SSH_KEY** — Private key for SSH access  
-- **GHCR_PAT** — GitHub Personal Access Token for Container Registry  
-
-**These secrets are used in the deployment step to:**
-- SSH into EC2  
-- Pull Docker image from GHCR  
-- Run the container securely  
 
 ## ⚡ GitHub Actions Pipeline Steps
 
