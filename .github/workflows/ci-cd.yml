@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'main.py'  
+      - 'main.py'
 
 jobs:
   test:
@@ -39,11 +39,12 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v4
 
-      - name: Convert owner name to lowercase
-        id: owner
-        run: echo "lc=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+      - name: Convert owner and repo name to lowercase
+        id: vars
+        run: |
+          echo "lc_owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "lc_repo=$(basename '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-      # Use the GitHub-provided token to publish images under this repo
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -57,8 +58,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ steps.owner.outputs.lc }}/InventoryPortal/inventory-app:${{ github.sha }}
-            ghcr.io/${{ steps.owner.outputs.lc }}/InventoryPortal/inventory-app:latest
+            ghcr.io/${{ steps.vars.outputs.lc_owner }}/${{ steps.vars.outputs.lc_repo }}/inventory-app:${{ github.sha }}
+            ghcr.io/${{ steps.vars.outputs.lc_owner }}/${{ steps.vars.outputs.lc_repo }}/inventory-app:latest
 
   deploy-to-ec2:
     name: Deploy to AWS EC2 (with built-in rollback)
@@ -94,15 +95,17 @@ jobs:
         if: env.SKIP_DEPLOY != 'true'
         run: ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Owner lowercase (for GHCR path)
+      - name: Owner and repo lowercase (for GHCR path)
         if: env.SKIP_DEPLOY != 'true'
-        id: owner2
-        run: echo "lc=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+        id: owner_repo
+        run: |
+          echo "lc_owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "lc_repo=$(basename '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Connect and Deploy to EC2 (with rollback)
         if: env.SKIP_DEPLOY != 'true'
         env:
-          IMAGE_SHA: ghcr.io/${{ steps.owner2.outputs.lc }}/InventoryPortal/inventory-app:${{ github.sha }}
+          IMAGE_SHA: ghcr.io/${{ steps.owner_repo.outputs.lc_owner }}/${{ steps.owner_repo.outputs.lc_repo }}/inventory-app:${{ github.sha }}
           GHCR_USER: ${{ github.actor }}
           GHCR_PAT: ${{ secrets.GITHUB_TOKEN }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
