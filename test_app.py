@@ -10,7 +10,7 @@ def client():
 def test_home(client):
     response = client.get('/')
     assert response.status_code == 200
-    assert response.json == {"message": "Welcome to Inventory Tracker API!!Good Evening"}
+    assert response.json == {"message": "Welcome to Inventory Tracker API!!Good Morning"}
 
 # Get all inventory
 def test_get_inventory(client):
