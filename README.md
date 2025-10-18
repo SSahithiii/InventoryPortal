@@ -13,7 +13,8 @@ This project implements a **reliable CI/CD pipeline** for the Inventory Manageme
 
 - Fork this repository 
 - While running on remote machine pass values to secrets
-- ## 🔐 GitHub Secrets Required (Under repo settings --> Secrets and Variables --> Variables --> Actions --> New Repo Secret --> Give Name of the secret and the value .
+- ## 🔐 GitHub Secrets Required
+  # (Under repo settings --> Secrets and Variables --> Variables --> Actions --> New Repo Secret --> Give Name of the secret and the  value)
 
 - **EC2_HOST** — IP or DNS of EC2 server  
 - **EC2_USERNAME** — SSH user for EC2 (e.g., `ubuntu`)  
